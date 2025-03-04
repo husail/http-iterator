@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) [2024] victordanilo_cs@live.com
+Copyright (c) [2024] Victor Danilo <victordanilo_cs@live.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
