@@ -45,7 +45,7 @@ class HttpIterator
 
     public function hasNextPage(): bool
     {
-        return $this->currentPage < $this->totalPages() && !$this->hasFinished();
+        return $this->currentPage <= $this->totalPages() && !$this->hasFinished();
     }
 
     public function nextPage(): self
