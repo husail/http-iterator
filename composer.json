@@ -17,7 +17,9 @@
         "php": "^7.4|^8.0"
     },
     "require-dev": {
-        "pestphp/pest": "^2.0"
+        "pestphp/pest": "^2.0",
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "phpstan/phpstan": "^2.1"
     },
     "autoload": {
         "psr-4": {
@@ -30,9 +32,16 @@
         }
     },
     "scripts": {
+        "analyse": "vendor/bin/phpstan analyse",
+        "format": "vendor/bin/php-cs-fixer fix --allow-risky=yes",
         "test": "vendor/bin/pest",
         "test-coverage": "vendor/bin/pest --coverage"
     },
     "minimum-stability": "dev",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
 }
