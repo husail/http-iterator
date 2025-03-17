@@ -26,14 +26,16 @@ class HttpIterator
         return new self($perPage, $currentPage);
     }
 
-    public static function run(int $perPage, int $currentPage, callable $callableRun, callable $callableException = null)
+    public static function run(int $perPage, int $currentPage, callable $callableRun, ?callable $callableException = null)
     {
         $iteratorHttp = HttpIterator::make($perPage, $currentPage);
         do {
             try {
                 $callableRun($iteratorHttp);
             } catch (Exception $exception) {
-                if ($callableException) $callableException($exception);
+                if ($callableException) {
+                    $callableException($exception);
+                }
             }
         } while ($iteratorHttp->hasNextPage() && !$iteratorHttp->hasFinished());
     }
@@ -81,7 +83,7 @@ class HttpIterator
         $this->totalResult = $length;
         $this->initialized = true;
 
-        return  $this;
+        return $this;
     }
 
     public function currentPage(): int
