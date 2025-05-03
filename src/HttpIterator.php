@@ -21,14 +21,9 @@ class HttpIterator
         $this->finished = false;
     }
 
-    public static function make(int $perPage = 10, int $currentPage = 1): self
+    public static function run(int $perPage, int $currentPage, callable $callableRun, ?callable $callableException = null): void
     {
-        return new self($perPage, $currentPage);
-    }
-
-    public static function run(int $perPage, int $currentPage, callable $callableRun, ?callable $callableException = null)
-    {
-        $iteratorHttp = HttpIterator::make($perPage, $currentPage);
+        $iteratorHttp = new HttpIterator($perPage, $currentPage);
         do {
             try {
                 $callableRun($iteratorHttp);
