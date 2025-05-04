@@ -106,6 +106,7 @@ class HttpIterator
     public function lastPage(): self
     {
         $this->currentPage = $this->totalPages();
+        $this->resetRetries();
 
         return $this;
     }
@@ -113,6 +114,7 @@ class HttpIterator
     public function toPage(int $page): self
     {
         $this->currentPage = $page;
+        $this->resetRetries();
 
         return $this;
     }
