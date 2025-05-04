@@ -35,6 +35,11 @@ class HttpIterator
         } while ($iteratorHttp->hasNextPage() && !$iteratorHttp->hasFinished());
     }
 
+    public function hasInitialized(): bool
+    {
+        return $this->initialized;
+    }
+
     public function hasFinished(): bool
     {
         return $this->finished;
@@ -42,7 +47,42 @@ class HttpIterator
 
     public function hasNextPage(): bool
     {
-        return $this->currentPage <= $this->totalPages() && !$this->hasFinished();
+        return $this->currentPage() <= $this->totalPages();
+    }
+
+    public function currentPage(): int
+    {
+        return $this->currentPage;
+    }
+
+    public function perPage(): int
+    {
+        return $this->perPage;
+    }
+
+    public function totalResult(): int
+    {
+        return $this->totalResult;
+    }
+
+    public function totalPages(): int
+    {
+        return (int) ceil($this->totalResult() / $this->perPage());
+    }
+
+    public function setPerPage(int $length): self
+    {
+        $this->perPage = $length;
+
+        return $this;
+    }
+
+    public function setTotalResult(int $length): self
+    {
+        $this->totalResult = $length;
+        $this->initialized = true;
+
+        return $this;
     }
 
     public function nextPage(): self
@@ -66,50 +106,10 @@ class HttpIterator
         return $this;
     }
 
-    public function setPerPage(int $length): self
-    {
-        $this->perPage = $length;
-
-        return $this;
-    }
-
-    public function setTotalResult(int $length): self
-    {
-        $this->totalResult = $length;
-        $this->initialized = true;
-
-        return $this;
-    }
-
-    public function currentPage(): int
-    {
-        return $this->currentPage;
-    }
-
-    public function perPage(): int
-    {
-        return $this->perPage;
-    }
-
-    public function totalResult(): int
-    {
-        return $this->totalResult;
-    }
-
-    public function totalPages(): int
-    {
-        return (int) ceil($this->totalResult / $this->perPage);
-    }
-
     public function finish(): self
     {
         $this->finished = true;
 
         return $this;
-    }
-
-    public function hasInitialized(): bool
-    {
-        return $this->initialized;
     }
 }
