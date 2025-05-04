@@ -12,32 +12,42 @@ class HttpIterator
     private bool $initialized;
     private bool $finished;
 
-    private function __construct(int $perPage, int $currentPage)
+    private int $retryCount;
+    private int $maxRetries;
+
+    public function __construct(int $perPage, int $currentPage, $maxRetries)
     {
         $this->perPage = $perPage;
         $this->currentPage = $currentPage;
         $this->totalResult = 0;
         $this->initialized = false;
         $this->finished = false;
+        $this->retryCount = 0;
+        $this->maxRetries = $maxRetries;
     }
 
-    public static function make(int $perPage = 10, int $currentPage = 1): self
+    public static function run(int $perPage, int $currentPage, callable $callableRun, ?callable $callableException = null, int $maxRetries = 3): void
     {
-        return new self($perPage, $currentPage);
-    }
-
-    public static function run(int $perPage, int $currentPage, callable $callableRun, ?callable $callableException = null)
-    {
-        $iteratorHttp = HttpIterator::make($perPage, $currentPage);
+        $iteratorHttp = new HttpIterator($perPage, $currentPage, $maxRetries);
         do {
             try {
                 $callableRun($iteratorHttp);
+            } catch (SkipIterationException) {
+                if (!$iteratorHttp->canRetry()) {
+                    $iteratorHttp->finish();
+                }
             } catch (Exception $exception) {
+                $iteratorHttp->incrementRetry();
                 if ($callableException) {
                     $callableException($exception);
                 }
             }
-        } while ($iteratorHttp->hasNextPage() && !$iteratorHttp->hasFinished());
+        } while (($iteratorHttp->hasNextPage() && !$iteratorHttp->hasFinished()));
+    }
+
+    public function hasInitialized(): bool
+    {
+        return $this->initialized;
     }
 
     public function hasFinished(): bool
@@ -47,43 +57,7 @@ class HttpIterator
 
     public function hasNextPage(): bool
     {
-        return $this->currentPage <= $this->totalPages() && !$this->hasFinished();
-    }
-
-    public function nextPage(): self
-    {
-        $this->currentPage += 1;
-
-        return $this;
-    }
-
-    public function lastPage(): self
-    {
-        $this->currentPage = $this->totalPages();
-
-        return $this;
-    }
-
-    public function toPage(int $page): self
-    {
-        $this->currentPage = $page;
-
-        return $this;
-    }
-
-    public function setPerPage(int $length): self
-    {
-        $this->perPage = $length;
-
-        return $this;
-    }
-
-    public function setTotalResult(int $length): self
-    {
-        $this->totalResult = $length;
-        $this->initialized = true;
-
-        return $this;
+        return $this->currentPage() <= $this->totalPages();
     }
 
     public function currentPage(): int
@@ -103,7 +77,46 @@ class HttpIterator
 
     public function totalPages(): int
     {
-        return (int) ceil($this->totalResult / $this->perPage);
+        return (int) ceil($this->totalResult() / $this->perPage());
+    }
+
+    public function setPerPage(int $length): self
+    {
+        $this->perPage = $length;
+
+        return $this;
+    }
+
+    public function setTotalResult(int $length): self
+    {
+        $this->totalResult = $length;
+        $this->initialized = true;
+
+        return $this;
+    }
+
+    public function nextPage(): self
+    {
+        $this->currentPage += 1;
+        $this->resetRetries();
+
+        return $this;
+    }
+
+    public function lastPage(): self
+    {
+        $this->currentPage = $this->totalPages();
+        $this->resetRetries();
+
+        return $this;
+    }
+
+    public function toPage(int $page): self
+    {
+        $this->currentPage = $page;
+        $this->resetRetries();
+
+        return $this;
     }
 
     public function finish(): self
@@ -113,8 +126,33 @@ class HttpIterator
         return $this;
     }
 
-    public function hasInitialized(): bool
+    /**
+     * @return never
+     *
+     * @throws SkipIterationException
+     */
+    public function retry(): never
     {
-        return $this->initialized;
+        $this->incrementRetry();
+        throw new SkipIterationException();
+    }
+
+    public function incrementRetry(): self
+    {
+        $this->retryCount++;
+
+        return $this;
+    }
+
+    public function resetRetries(): self
+    {
+        $this->retryCount = 0;
+
+        return $this;
+    }
+
+    public function canRetry(): bool
+    {
+        return $this->retryCount < $this->maxRetries;
     }
 }

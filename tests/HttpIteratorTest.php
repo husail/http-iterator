@@ -3,17 +3,16 @@
 use Husail\HttpIterator\HttpIterator;
 
 it('creates HttpIterator correctly', function () {
-    $iterator = HttpIterator::make(20, 3);
+    $iterator = new HttpIterator(20, 3, 3);
     expect($iterator)->toBeInstanceOf(HttpIterator::class)
         ->and($iterator->perPage())->toEqual(20)
         ->and($iterator->currentPage())->toEqual(3)
-        ->and($iterator->hasFinished())->toEqual(false)
         ->and($iterator->hasFinished())->toEqual(false)
         ->and($iterator->hasInitialized())->toEqual(false);
 });
 
 it('updates perPage and totalResult correctly', function () {
-    $iterator = HttpIterator::make(30, 2);
+    $iterator = new HttpIterator(30, 2, 3);
     $iterator->setPerPage(20);
     $iterator->setTotalResult(100);
     expect($iterator->perPage())->toEqual(20)
@@ -21,15 +20,18 @@ it('updates perPage and totalResult correctly', function () {
         ->and($iterator->totalPages())->toEqual(5);
 });
 
-it('navigates pages correctly', function () {
-    $iterator = HttpIterator::make(15, 2);
+it('navigates pages correctly and resets retry count', function () {
+    $iterator = new HttpIterator(15, 2, 3);
     $iterator->setTotalResult(150);
 
-    $iterator->nextPage();
-    expect($iterator->currentPage())->toEqual(3);
+    $iterator->incrementRetry();
+    expect($iterator->canRetry())->toBeTrue();
 
-    $iterator->toPage(7);
     $iterator->nextPage();
+    expect($iterator->currentPage())->toEqual(3)
+        ->and($iterator->canRetry())->toBeTrue();
+
+    $iterator->toPage(7)->nextPage();
     expect($iterator->currentPage())->toEqual(8);
 
     $iterator->lastPage();
@@ -37,7 +39,7 @@ it('navigates pages correctly', function () {
 });
 
 it('checks finished and hasNextPage correctly', function () {
-    $iterator = HttpIterator::make(10, 1);
+    $iterator = new HttpIterator(10, 1, 3);
     $iterator->setTotalResult(50);
     expect($iterator->hasNextPage())->toBeTrue();
 
@@ -48,26 +50,44 @@ it('checks finished and hasNextPage correctly', function () {
     expect($iterator->hasNextPage())->toBeTrue();
 
     $iterator->finish();
-    expect($iterator->hasFinished())->toBeTrue()
-        ->and($iterator->hasNextPage())->toBeFalse();
+    expect($iterator->hasFinished())->toBeTrue();
 });
 
-it('runs callable in run method', function () {
-    $executedPages = [];
+it('stops retries after maxRetries is exceeded', function () {
+    $executed = [];
 
-    HttpIterator::run(10, 1, function ($iterator) use (&$executedPages) {
-        // Mock do response
-        $responseTotalResult = 50;
+    HttpIterator::run(10, 1, function ($iterator) use (&$executed) {
         if (!$iterator->hasInitialized()) {
-            expect($iterator->totalResult())->toEqual(0);
-            $iterator->setTotalResult($responseTotalResult);
-            expect($iterator->totalPages())->toEqual(5);
+            $iterator->setTotalResult(10);
         }
 
-        $executedPages[] = $iterator->currentPage();
+        $executed[] = $iterator->currentPage();
+        $iterator->retry();
+    });
+
+    expect($executed)->toHaveCount(3);
+});
+
+it('runs callable in run method with retries and skip', function () {
+    $executedPages = [];
+    $retryCounts = [];
+
+    HttpIterator::run(10, 1, function ($iterator) use (&$executedPages, &$retryCounts) {
+        if (!$iterator->hasInitialized()) {
+            $iterator->setTotalResult(30);
+        }
+
+        $current = $iterator->currentPage();
+        $retryCounts[$current] = $retryCounts[$current] ?? 0;
+        $executedPages[] = $current;
+
+        if ($current === 2 && $retryCounts[$current] === 0) {
+            $retryCounts[$current]++;
+            $iterator->retry();
+        }
+
         $iterator->nextPage();
     });
 
-    expect($executedPages)->toHaveCount(5)
-        ->and($executedPages)->toEqual([1, 2, 3, 4, 5]);
+    expect($executedPages)->toEqual([1, 2, 2, 3]);
 });
