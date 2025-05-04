@@ -33,13 +33,16 @@ class HttpIterator
             try {
                 $callableRun($iteratorHttp);
             } catch (SkipIterationException) {
+                if (!$iteratorHttp->canRetry()) {
+                    $iteratorHttp->finish();
+                }
             } catch (Exception $exception) {
                 $iteratorHttp->incrementRetry();
                 if ($callableException) {
                     $callableException($exception);
                 }
             }
-        } while ($iteratorHttp->canRetry() || ($iteratorHttp->hasNextPage() && !$iteratorHttp->hasFinished()));
+        } while (($iteratorHttp->hasNextPage() && !$iteratorHttp->hasFinished()));
     }
 
     public function hasInitialized(): bool
