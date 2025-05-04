@@ -15,7 +15,7 @@ class HttpIterator
     private int $retryCount;
     private int $maxRetries;
 
-    private function __construct(int $perPage, int $currentPage, $maxRetries)
+    public function __construct(int $perPage, int $currentPage, $maxRetries)
     {
         $this->perPage = $perPage;
         $this->currentPage = $currentPage;
@@ -123,6 +123,7 @@ class HttpIterator
 
     /**
      * @return never
+     *
      * @throws SkipIterationException
      */
     public function retry(): never
@@ -141,6 +142,7 @@ class HttpIterator
     public function resetRetries(): self
     {
         $this->retryCount = 0;
+
         return $this;
     }
 
